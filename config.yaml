@@ -1,0 +1,13 @@
+friday:
+  name: "FRIDAY"
+  version: "0.1.0"
+  wake_word: "friday"
+
+voice:
+  language: "en-US"
+  speeech_rate: 175
+  volume: 1.0
+
+assistant:
+  personality: "professional but friendly"
+  resposnse_style: "concise"
