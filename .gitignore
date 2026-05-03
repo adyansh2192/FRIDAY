@@ -1,0 +1,9 @@
+venv/
+.env
+__pycache__/
+*.pyc
+friday_memory.json
+friday.log
+*.log
+chime.wav
+.vscode/
