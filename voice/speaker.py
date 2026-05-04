@@ -5,7 +5,7 @@ import tempfile
 import os
 from loguru import logger
 
-VOICE = "en-US-AriaNeural"
+VOICE = "en-US-JennyNeural"
 RATE = "-8%"
 PITCH = "-5Hz"
 

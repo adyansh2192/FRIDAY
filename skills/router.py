@@ -9,18 +9,20 @@ from skills.website_skill import WebsiteSkill
 from skills.briefing_skill import BriefingSkill
 from skills.calculator_skill import CalculatorSkill
 from skills.news_skill import NewsSkill
+from skills.music_skill import MusicSkill
 
 SKILLS = [
     BriefingSkill(),
     DateTimeSkill(),
     CalculatorSkill(),
     WeatherSkill(),
-    NewsSkill(),        # ← NEW — before search so "news" doesn't go to web search
+    NewsSkill(),
+    MusicSkill(),       # ← NEW — before launcher and search
     LauncherSkill(),
     WebsiteSkill(),
     ReminderSkill(),
     SystemSkill(),
-    SearchSkill(),      # always last — widest catcher
+    SearchSkill(),
 ]
 
 def route(user_input: str) -> str | None:
