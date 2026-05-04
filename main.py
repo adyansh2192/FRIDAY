@@ -9,29 +9,42 @@ from voice.wake_word import listen_for_wake_word, play_chime
 from brain.mind import think, reset_memory
 from skills.router import route
 from ui.window import launch_ui, signals
+from ui.tray_icon import create_tray
 
 
 def handle_command(user_input: str) -> bool:
     if not user_input:
         return True
 
-    # Shutdown
     if any(w in user_input for w in ["shutdown", "exit", "goodbye", "quit", "power off"]):
         speak("Shutting down. Goodbye boss.")
         signals.friday_replied.emit("Shutting down. Goodbye boss.")
         return False
 
-    # Memory reset
     if any(w in user_input for w in ["reset memory", "forget everything", "clear memory"]):
         reset_memory()
         speak("Memory cleared. Starting fresh boss.")
         signals.friday_replied.emit("Memory cleared. Starting fresh boss.")
         return True
 
-    # Skills → Brain
+    # Personality check
+    from brain.personality import handle_personality
+    personality_response = handle_personality(user_input)
+    if personality_response:
+        signals.status_changed.emit("speaking")
+        signals.friday_replied.emit(personality_response)
+        speak(personality_response)
+        return True
+
+    # Show thinking indicator
     signals.status_changed.emit("thinking")
+    signals.show_typing.emit()
+
+    # Skills then brain
     response = route(user_input) or think(user_input)
 
+    # Hide typing, show response
+    signals.hide_typing.emit()
     signals.status_changed.emit("speaking")
     signals.friday_replied.emit(response)
     speak(response)
@@ -102,6 +115,9 @@ def friday_loop():
 def main():
     # Launch UI on main thread
     app, window = launch_ui()
+
+    # Start system tray icon
+    tray = create_tray(app, window)
 
     # Run FRIDAY logic in background thread
     friday_thread = threading.Thread(target=friday_loop, daemon=True)

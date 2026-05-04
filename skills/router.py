@@ -7,16 +7,20 @@ from skills.reminder_skill import ReminderSkill
 from skills.system_skill import SystemSkill
 from skills.website_skill import WebsiteSkill
 from skills.briefing_skill import BriefingSkill
+from skills.calculator_skill import CalculatorSkill
+from skills.news_skill import NewsSkill
 
 SKILLS = [
-    BriefingSkill(),    # first — catches "good morning" before anything else
+    BriefingSkill(),
     DateTimeSkill(),
+    CalculatorSkill(),
     WeatherSkill(),
+    NewsSkill(),        # ← NEW — before search so "news" doesn't go to web search
     LauncherSkill(),
-    WebsiteSkill(),     # before search so "open youtube" doesn't go to search
+    WebsiteSkill(),
     ReminderSkill(),
     SystemSkill(),
-    SearchSkill(),      # widest catcher — always last
+    SearchSkill(),      # always last — widest catcher
 ]
 
 def route(user_input: str) -> str | None:
