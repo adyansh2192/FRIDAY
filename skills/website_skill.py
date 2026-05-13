@@ -7,12 +7,12 @@ class WebsiteSkill(BaseSkill):
 
     TRIGGERS = [
         "open", "go to", "launch", "take me to",
-        "browse", "navigate to", "visit", "load"
+        "browse", "navigate to", "visit", "load",
+        "show me", "watch", "find on", "search on",
+        "play on", "look up on"
     ]
 
-    # Known sites — handles common ones instantly without guessing
     SITE_MAP = {
-        # Google services
         "youtube":          "https://youtube.com",
         "gmail":            "https://mail.google.com",
         "google":           "https://google.com",
@@ -21,130 +21,132 @@ class WebsiteSkill(BaseSkill):
         "google docs":      "https://docs.google.com",
         "google sheets":    "https://sheets.google.com",
         "google translate": "https://translate.google.com",
-
-        # Social
         "instagram":        "https://instagram.com",
         "twitter":          "https://twitter.com",
-        "x":                "https://x.com",
         "facebook":         "https://facebook.com",
         "linkedin":         "https://linkedin.com",
         "reddit":           "https://reddit.com",
         "whatsapp":         "https://web.whatsapp.com",
         "telegram":         "https://web.telegram.org",
-        "pinterest":        "https://pinterest.com",
-        "snapchat":         "https://snapchat.com",
-
-        # Dev tools
         "github":           "https://github.com",
         "stack overflow":   "https://stackoverflow.com",
-        "replit":           "https://replit.com",
-        "codepen":          "https://codepen.io",
-
-        # Entertainment
         "netflix":          "https://netflix.com",
         "spotify":          "https://open.spotify.com",
         "hotstar":          "https://hotstar.com",
         "prime video":      "https://primevideo.com",
         "disney plus":      "https://disneyplus.com",
         "twitch":           "https://twitch.tv",
-
-        # News
         "bbc":              "https://bbc.com/news",
         "times of india":   "https://timesofindia.indiatimes.com",
         "ndtv":             "https://ndtv.com",
-        "the hindu":        "https://thehindu.com",
         "cricbuzz":         "https://cricbuzz.com",
-        "espn":             "https://espn.com",
-
-        # Shopping
         "amazon":           "https://amazon.in",
         "flipkart":         "https://flipkart.com",
-        "meesho":           "https://meesho.com",
-        "myntra":           "https://myntra.com",
-
-        # Productivity
         "notion":           "https://notion.so",
-        "trello":           "https://trello.com",
         "canva":            "https://canva.com",
-        "figma":            "https://figma.com",
-
-        # AI tools
         "chatgpt":          "https://chat.openai.com",
         "claude":           "https://claude.ai",
-        "gemini":           "https://gemini.google.com",
-        "perplexity":       "https://perplexity.ai",
-
-        # Other
         "wikipedia":        "https://wikipedia.org",
-        "weather":          "https://weather.com",
-        "maps":             "https://maps.google.com",
-        "translate":        "https://translate.google.com",
+    }
+
+    SEARCH_URLS = {
+        "youtube":   "https://www.youtube.com/results?search_query=",
+        "spotify":   "spotify:search:",
+        "netflix":   "https://www.netflix.com/search?q=",
+        "amazon":    "https://www.amazon.in/s?k=",
+        "flipkart":  "https://www.flipkart.com/search?q=",
+        "google":    "https://www.google.com/search?q=",
+        "reddit":    "https://www.reddit.com/search/?q=",
+        "wikipedia": "https://en.wikipedia.org/wiki/Special:Search?search=",
+        "github":    "https://github.com/search?q=",
+        "cricbuzz":  "https://www.cricbuzz.com/search?q=",
+        "hotstar":   "https://www.hotstar.com/in/search?q=",
+        "prime video": "https://www.primevideo.com/search/ref=atv_sr_sug_1?phrase=",
     }
 
     def can_handle(self, user_input: str) -> bool:
         text = user_input.lower()
-        return any(t in text for t in self.TRIGGERS)
+
+        # Always handle "X on Platform" pattern — most specific
+        for platform in self.SEARCH_URLS:
+            if f"on {platform}" in text:
+                return True
+
+        # Only handle "open X" if X is a known website — not an app
+        for site in self.SITE_MAP:
+            if site in text:
+                return True
+
+        # Handle generic browse/navigate/visit/watch triggers
+        # but NOT "open" or "launch" alone — those belong to LauncherSkill
+        web_only_triggers = [
+            "go to", "take me to", "browse", "navigate to",
+            "visit", "load", "show me", "watch", "find on",
+            "search on", "play on", "look up on"
+        ]
+        return any(t in text for t in web_only_triggers)
 
     def execute(self, user_input: str) -> str:
-        text = user_input.lower()
+        text = user_input.lower().strip()
 
-        # Step 1 — check known sites first (longest match wins)
+        # ── Priority 1: "X on Platform" pattern ──
+        # Catches: "play Kesariya on YouTube"
+        #          "search dark knight on Netflix"
+        #          "open bohemian rhapsody on Spotify"
+        for platform, search_url in self.SEARCH_URLS.items():
+            pattern = rf'(?:play|open|watch|find|search|look up|put on|show)\s+(.+?)\s+on\s+{platform}'
+            match   = re.search(pattern, text)
+            if match:
+                content = match.group(1).strip()
+                return self._open_content(content, platform, search_url)
+
+        # ── Priority 2: Known sites ──
         for site in sorted(self.SITE_MAP, key=len, reverse=True):
             if site in text:
-                url = self.SITE_MAP[site]
-                webbrowser.open(url)
-                logger.success(f"Opened known site: {url}")
+                webbrowser.open(self.SITE_MAP[site])
+                logger.success(f"Opened site: {site}")
                 return f"Opening {site} for you boss."
 
-        # Step 2 — try to build a URL from what they said
+        # ── Priority 3: Build URL from name ──
         site_name = self._extract_site_name(text)
-
         if site_name:
-            # Try direct .com URL first
-            guessed_url = f"https://www.{site_name}.com"
-            try:
-                webbrowser.open(guessed_url)
-                logger.success(f"Opened guessed URL: {guessed_url}")
-                return f"Opening {site_name} for you boss."
-            except Exception as e:
-                logger.warning(f"Guessed URL failed: {e}")
+            url = f"https://www.{site_name}.com"
+            webbrowser.open(url)
+            return f"Opening {site_name} for you boss."
 
-        # Step 3 — fall back to Google search for anything else
-        query = self._extract_search_query(text)
-        search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-        webbrowser.open(search_url)
-        logger.info(f"Opened Google search for: {query}")
-        return f"I'm not sure of the exact site boss, so I've searched Google for {query}."
+        # ── Priority 4: Google search fallback ──
+        query = self._clean_query(text)
+        webbrowser.open(f"https://www.google.com/search?q={query.replace(' ', '+')}")
+        return f"Searching Google for {query} boss."
+
+    def _open_content(self, content: str, platform: str, search_url: str) -> str:
+        try:
+            encoded = content.replace(" ", "+")
+
+            if platform == "spotify":
+                url = f"spotify:search:{content.replace(' ', '%20')}"
+            else:
+                url = f"{search_url}{encoded}"
+
+            webbrowser.open(url)
+            logger.success(f"Opened '{content}' on {platform}")
+            return f"Opening {content} on {platform} for you boss."
+
+        except Exception as e:
+            logger.error(f"Content open error: {e}")
+            return f"Couldn't open {content} on {platform} boss."
 
     def _extract_site_name(self, text: str) -> str | None:
-        """
-        Pulls out the website name from what the user said.
-        Handles patterns like:
-        - "open facebook"
-        - "go to amazon"
-        - "open the bbc website"
-        - "take me to stackoverflow"
-        """
-        # Remove trigger words
         for trigger in sorted(self.TRIGGERS, key=len, reverse=True):
             text = text.replace(trigger, "").strip()
-
-        # Remove filler words
         for filler in ["the", "website", "site", "page", "web", "dot com", ".com"]:
             text = text.replace(filler, "").strip()
-
-        # What's left should be the site name
         site = text.strip()
-
-        # Must be a single word or short phrase — reject long sentences
         if site and len(site.split()) <= 3 and len(site) > 1:
-            # Convert to URL-friendly format
             return site.replace(" ", "")
-
         return None
 
-    def _extract_search_query(self, text: str) -> str:
-        """Extracts a clean search query from the user's request."""
+    def _clean_query(self, text: str) -> str:
         for trigger in sorted(self.TRIGGERS, key=len, reverse=True):
             text = text.replace(trigger, "").strip()
         return text.strip() or "website"

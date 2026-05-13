@@ -4,12 +4,15 @@ from skills.base import BaseSkill
 class DateTimeSkill(BaseSkill):
 
     TRIGGERS = [
-        "time", "date", "day", "what day",
-        "what time", "today", "current time", "current date"
+        "what time", "what's the time", "current time",
+        "what date", "what's the date", "current date",
+        "what day", "what's today", "today's date",
     ]
 
     def can_handle(self, user_input: str) -> bool:
-        return any(trigger in user_input.lower() for trigger in self.TRIGGERS)
+        text = user_input.lower()
+        # Use exact phrase matching — not substring
+        return any(t in text for t in self.TRIGGERS)
 
     def execute(self, user_input: str) -> str:
         now = datetime.now()

@@ -5,77 +5,112 @@ from loguru import logger
 
 class LauncherSkill(BaseSkill):
 
-    TRIGGERS = [
+    OPEN_TRIGGERS = [
         "open", "launch", "start", "run"
     ]
 
-    # Add or change any of these to match YOUR installed apps
+    CLOSE_TRIGGERS = [
+        "close", "kill", "shut", "terminate",
+        "quit", "exit", "end"
+    ]
+
     APP_MAP = {
-        # Browsers
-        "chrome":       r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        "firefox":      r"C:\Program Files\Mozilla Firefox\firefox.exe",
-        "edge":         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-
-        # Dev tools
-        "vs code":      r"C:\Users\{user}\AppData\Local\Programs\Microsoft VS Code\Code.exe",
-        "vscode":       r"C:\Users\{user}\AppData\Local\Programs\Microsoft VS Code\Code.exe",
-        "notepad":      "notepad.exe",
-        "terminal":     "cmd.exe",
-
-        # Media
-        "spotify":      r"C:\Users\{user}\AppData\Roaming\Spotify\Spotify.exe",
-        "vlc":          r"C:\Program Files\VideoLAN\VLC\vlc.exe",
-
-        # System
-        "calculator":   "calc.exe",
+        "chrome":        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        "firefox":       r"C:\Program Files\Mozilla Firefox\firefox.exe",
+        "edge":          r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        "vs code":       r"C:\Users\{user}\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+        "vscode":        r"C:\Users\{user}\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+        "notepad":       "notepad.exe",
+        "terminal":      "cmd.exe",
+        "spotify":       r"C:\Users\{user}\AppData\Roaming\Spotify\Spotify.exe",
+        "vlc":           r"C:\Program Files\VideoLAN\VLC\vlc.exe",
+        "calculator":    "calc.exe",
         "file explorer": "explorer.exe",
-        "task manager": "taskmgr.exe",
-        "settings":     "ms-settings:",
-        "paint":        "mspaint.exe",
+        "task manager":  "taskmgr.exe",
+        "settings":      "ms-settings:",
+        "paint":         "mspaint.exe",
+        "discord":       r"C:\Users\{user}\AppData\Local\Discord\Update.exe",
+        "whatsapp":      r"C:\Users\{user}\AppData\Local\WhatsApp\WhatsApp.exe",
+    }
+
+    PROCESS_MAP = {
+        "chrome":        "chrome.exe",
+        "firefox":       "firefox.exe",
+        "edge":          "msedge.exe",
+        "vs code":       "Code.exe",
+        "vscode":        "Code.exe",
+        "notepad":       "notepad.exe",
+        "spotify":       "Spotify.exe",
+        "vlc":           "vlc.exe",
+        "calculator":    "CalculatorApp.exe",
+        "task manager":  "Taskmgr.exe",
+        "paint":         "mspaint.exe",
+        "discord":       "Discord.exe",
+        "whatsapp":      "WhatsApp.exe",
+        "word":          "WINWORD.EXE",
+        "excel":         "EXCEL.EXE",
+        "powerpoint":    "POWERPNT.EXE",
     }
 
     def can_handle(self, user_input: str) -> bool:
         text = user_input.lower()
-        has_trigger = any(t in text for t in self.TRIGGERS)
-        has_app = any(app in text for app in self.APP_MAP.keys())
-        return has_trigger and has_app
+
+        has_open  = any(t in text for t in self.OPEN_TRIGGERS)
+        has_close = any(t in text for t in self.CLOSE_TRIGGERS)
+        has_app   = any(app in text for app in self.APP_MAP) or \
+                    any(app in text for app in self.PROCESS_MAP)
+
+        return (has_open or has_close) and has_app
 
     def execute(self, user_input: str) -> str:
         text = user_input.lower()
-        username = os.getenv("USERNAME", "User")
 
-        # Find which app was mentioned
-        matched_app = None
-        matched_path = None
+        if any(t in text for t in self.CLOSE_TRIGGERS):
+            return self._close_app(text)
+        return self._open_app(text)
+
+    def _open_app(self, text: str) -> str:
+        username = os.getenv("USERNAME", "User")
 
         for app, path in self.APP_MAP.items():
             if app in text:
-                matched_app = app
-                # Fill in the actual Windows username
-                matched_path = path.replace("{user}", username)
-                break
+                real_path = path.replace("{user}", username)
+                try:
+                    if real_path.startswith("ms-"):
+                        os.startfile(real_path)
+                    elif not os.path.isabs(real_path):
+                        subprocess.Popen(real_path, shell=True)
+                    elif os.path.exists(real_path):
+                        subprocess.Popen(real_path)
+                    else:
+                        return f"I found {app} in my list but couldn't locate it on your PC boss. Check the path in launcher_skill.py."
 
-        if not matched_app:
-            return "I couldn't figure out which app to open, boss."
+                    logger.success(f"Opened: {app}")
+                    return f"Opening {app} for you boss."
 
-        try:
-            if matched_path.startswith("ms-"):
-                # Windows Settings URI
-                os.startfile(matched_path)
-            elif matched_path.endswith(".exe") and not os.path.isabs(matched_path):
-                # System app like calc.exe — Windows finds it automatically
-                subprocess.Popen(matched_path, shell=True)
-            else:
-                # Full path app
-                if os.path.exists(matched_path):
-                    subprocess.Popen(matched_path)
-                else:
-                    logger.warning(f"App path not found: {matched_path}")
-                    return f"I found {matched_app} in my list but couldn't locate it on your PC. Check the path in launcher_skill.py."
+                except Exception as e:
+                    logger.error(f"Open failed: {e}")
+                    return f"Ran into an issue opening {app} boss."
 
-            logger.success(f"Launched: {matched_app}")
-            return f"Opening {matched_app} for you, boss."
+        return "I couldn't figure out which app to open boss."
 
-        except Exception as e:
-            logger.error(f"Launch failed: {e}")
-            return f"I ran into an issue opening {matched_app}."
+    def _close_app(self, text: str) -> str:
+        for app, process in self.PROCESS_MAP.items():
+            if app in text:
+                try:
+                    result = subprocess.run(
+                        ["taskkill", "/F", "/IM", process],
+                        capture_output=True,
+                        text=True
+                    )
+                    if result.returncode == 0:
+                        logger.success(f"Closed: {app}")
+                        return f"Closed {app} boss."
+                    else:
+                        return f"{app} doesn't seem to be running boss."
+
+                except Exception as e:
+                    logger.error(f"Close failed: {e}")
+                    return f"Couldn't close {app} boss."
+
+        return "I couldn't figure out which app to close boss."

@@ -23,6 +23,9 @@ YOUR COMMUNICATION STYLE:
 - Use natural language, not bullet points in speech
 - Vary your sentence starters so responses feel fresh each time
 - When you don't know something, say so plainly — "I'm not sure on that one boss"
+- If the user speaks to you in Hindi or uses Hindi words, respond in Hindi naturally
+- If the user mixes Hindi and English (Hinglish), match their style
+- Never switch languages unless the user does first
 
 YOUR AWARENESS:
 - You are aware of current events because you have access to live web search
@@ -85,10 +88,14 @@ def _needs_web_search(user_input: str) -> bool:
 
     # Never search for these — they're conversational
     skip_triggers = [
-        "thank", "hello", "hi", "hey", "bye", "goodbye",
-        "how are you", "what can you do", "your name",
-        "tell me a joke", "joke", "remind", "open", "volume",
-        "screenshot", "shutdown", "restart", "mute"
+    "thank", "hello", "hi", "hey", "bye", "goodbye",
+    "how are you", "what can you do", "your name",
+    "tell me a joke", "joke", "remind", "open", "volume",
+    "screenshot", "shutdown", "restart", "mute",
+    # ← ADD THESE
+    "my specs", "my ram", "my cpu", "my battery",
+    "my storage", "my gpu", "my processor",
+    "pc spec", "system spec", "hardware",
     ]
 
     if any(t in text for t in skip_triggers):

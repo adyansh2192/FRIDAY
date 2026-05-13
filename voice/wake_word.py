@@ -5,10 +5,15 @@ from loguru import logger
 recognizer = sr.Recognizer()
 
 WAKE_PHRASES = [
+    # English
     "hey friday",
-    "hi friday", 
+    "hi friday",
     "okay friday",
     "friday",
+    # Hindi variations
+    "फ्राइडे",
+    "हे फ्राइडे",
+    "अरे फ्राइडे",
 ]
 
 def play_chime():

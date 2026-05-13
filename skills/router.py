@@ -1,28 +1,32 @@
 from loguru import logger
-from skills.datetime_skill import DateTimeSkill
-from skills.search_skill import SearchSkill
-from skills.weather_skill import WeatherSkill
-from skills.launcher_skill import LauncherSkill
-from skills.reminder_skill import ReminderSkill
-from skills.system_skill import SystemSkill
-from skills.website_skill import WebsiteSkill
+from skills.alarm_skill import AlarmSkill
 from skills.briefing_skill import BriefingSkill
 from skills.calculator_skill import CalculatorSkill
-from skills.news_skill import NewsSkill
+from skills.datetime_skill import DateTimeSkill
+from skills.launcher_skill import LauncherSkill
 from skills.music_skill import MusicSkill
+from skills.news_skill import NewsSkill
+from skills.reminder_skill import ReminderSkill
+from skills.search_skill import SearchSkill
+from skills.system_skill import SystemSkill
+from skills.system_stats_skill import SystemStatsSkill
+from skills.weather_skill import WeatherSkill
+from skills.website_skill import WebsiteSkill
 
 SKILLS = [
     BriefingSkill(),
+    AlarmSkill(),       # ← must be before DateTimeSkill
     DateTimeSkill(),
     CalculatorSkill(),
     WeatherSkill(),
     NewsSkill(),
-    MusicSkill(),       # ← NEW — before launcher and search
+    SystemStatsSkill(),
     LauncherSkill(),
     WebsiteSkill(),
     ReminderSkill(),
     SystemSkill(),
-    SearchSkill(),
+    MusicSkill(),
+    SearchSkill(),      # always last
 ]
 
 def route(user_input: str) -> str | None:
